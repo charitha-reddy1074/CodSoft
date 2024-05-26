@@ -1,6 +1,9 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 import java.io.*;
 
 // Student Class
@@ -85,10 +88,8 @@ class StudentManagementSystem {
         return null;
     }
 
-    public void displayAllStudents() {
-        for (Student student : students) {
-            System.out.println(student);
-        }
+    public List<Student> getAllStudents() {
+        return new ArrayList<>(students);
     }
 
     private void loadStudentsFromFile() {
@@ -119,93 +120,126 @@ class StudentManagementSystem {
     }
 }
 
-// Main Class for Console-Based UI
+// GUI Class
 public class SMS {
-    private static StudentManagementSystem sms = new StudentManagementSystem();
-    private static Scanner scanner = new Scanner(System.in);
+    private StudentManagementSystem sms = new StudentManagementSystem();
+    private JFrame frame;
+    private DefaultTableModel tableModel;
+    private JTable studentTable;
 
     public static void main(String[] args) {
-        while (true) {
-            System.out.println("1. Add Student");
-            System.out.println("2. Remove Student");
-            System.out.println("3. Search Student");
-            System.out.println("4. Display All Students");
-            System.out.println("5. Exit");
-            System.out.print("Enter your choice: ");
-            int choice = scanner.nextInt();
-            scanner.nextLine();  // Consume newline
-
-            switch (choice) {
-                case 1:
-                    addStudent();
-                    break;
-                case 2:
-                    removeStudent();
-                    break;
-                case 3:
-                    searchStudent();
-                    break;
-                case 4:
-                    sms.displayAllStudents();
-                    break;
-                case 5:
-                    System.exit(0);
-                default:
-                    System.out.println("Invalid choice! Please try again.");
-            }
-        }
+        SwingUtilities.invokeLater(() -> new SMS().createAndShowGUI());
     }
 
-    private static void addStudent() {
-        String name = getInput("Enter name: ");
-        int rollNumber = getValidatedIntInput("Enter roll number: ");
-        String grade = getInput("Enter grade: ");
-        String address = getInput("Enter address: ");
+    private void createAndShowGUI() {
+        frame = new JFrame("Student Management System");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(800, 600);
+        frame.setLayout(new BorderLayout());
 
-        Student student = new Student(name, rollNumber, grade, address);
-        sms.addStudent(student);
-        System.out.println("Student added successfully!");
+        String[] columnNames = {"Name", "Roll Number", "Grade", "Address"};
+        tableModel = new DefaultTableModel(columnNames, 0);
+        studentTable = new JTable(tableModel);
+        frame.add(new JScrollPane(studentTable), BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel();
+        JButton addButton = new JButton("Add Student");
+        JButton removeButton = new JButton("Remove Student");
+        JButton searchButton = new JButton("Search Student");
+        JButton displayButton = new JButton("Display All Students");
+        JButton exitButton = new JButton("Exit");
+
+        buttonPanel.add(addButton);
+        buttonPanel.add(removeButton);
+        buttonPanel.add(searchButton);
+        buttonPanel.add(displayButton);
+        buttonPanel.add(exitButton);
+
+        frame.add(buttonPanel, BorderLayout.SOUTH);
+
+        addButton.addActionListener(e -> promptAddStudent());
+        removeButton.addActionListener(e -> promptRemoveStudent());
+        searchButton.addActionListener(e -> promptSearchStudent());
+        displayButton.addActionListener(e -> displayAllStudents());
+        exitButton.addActionListener(e -> System.exit(0));
+
+        frame.setVisible(true);
     }
 
-    private static void removeStudent() {
-        int rollNumber = getValidatedIntInput("Enter roll number to remove: ");
-        sms.removeStudent(rollNumber);
-        System.out.println("Student removed successfully!");
-    }
+    private void promptAddStudent() {
+        JTextField nameField = new JTextField();
+        JTextField rollNumberField = new JTextField();
+        JTextField gradeField = new JTextField();
+        JTextField addressField = new JTextField();
 
-    private static void searchStudent() {
-        int rollNumber = getValidatedIntInput("Enter roll number to search: ");
-        Student student = sms.searchStudent(rollNumber);
-        if (student != null) {
-            System.out.println("Student found: " + student);
-        } else {
-            System.out.println("Student not found.");
-        }
-    }
+        Object[] message = {
+            "Name:", nameField,
+            "Roll Number:", rollNumberField,
+            "Grade:", gradeField,
+            "Address:", addressField
+        };
 
-    private static String getInput(String prompt) {
-        System.out.print(prompt);
-        String input = scanner.nextLine();
-        while (input.isEmpty()) {
-            System.out.println("Input cannot be empty. Please try again.");
-            System.out.print(prompt);
-            input = scanner.nextLine();
-        }
-        return input;
-    }
-
-    private static int getValidatedIntInput(String prompt) {
-        int input = -1;
-        boolean valid = false;
-        while (!valid) {
+        int option = JOptionPane.showConfirmDialog(frame, message, "Add Student", JOptionPane.OK_CANCEL_OPTION);
+        if (option == JOptionPane.OK_OPTION) {
             try {
-                System.out.print(prompt);
-                input = Integer.parseInt(scanner.nextLine());
-                valid = true;
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid input. Please enter a valid integer.");
+                String name = nameField.getText();
+                int rollNumber = Integer.parseInt(rollNumberField.getText());
+                String grade = gradeField.getText();
+                String address = addressField.getText();
+
+                Student student = new Student(name, rollNumber, grade, address);
+                sms.addStudent(student);
+                displayMessage("Student added successfully!");
+                refreshTableData();
+            } catch (NumberFormatException ex) {
+                displayMessage("Invalid input for roll number. Please enter a valid integer.");
             }
         }
-        return input;
+    }
+
+    private void promptRemoveStudent() {
+        String rollNumberStr = JOptionPane.showInputDialog(frame, "Enter roll number to remove:");
+        if (rollNumberStr != null && !rollNumberStr.isEmpty()) {
+            try {
+                int rollNumber = Integer.parseInt(rollNumberStr);
+                sms.removeStudent(rollNumber);
+                displayMessage("Student removed successfully!");
+                refreshTableData();
+            } catch (NumberFormatException ex) {
+                displayMessage("Invalid input for roll number. Please enter a valid integer.");
+            }
+        }
+    }
+
+    private void promptSearchStudent() {
+        String rollNumberStr = JOptionPane.showInputDialog(frame, "Enter roll number to search:");
+        if (rollNumberStr != null && !rollNumberStr.isEmpty()) {
+            try {
+                int rollNumber = Integer.parseInt(rollNumberStr);
+                Student student = sms.searchStudent(rollNumber);
+                if (student != null) {
+                    displayMessage("Student found: " + student);
+                } else {
+                    displayMessage("Student not found.");
+                }
+            } catch (NumberFormatException ex) {
+                displayMessage("Invalid input for roll number. Please enter a valid integer.");
+            }
+        }
+    }
+
+    private void displayAllStudents() {
+        refreshTableData();
+    }
+
+    private void refreshTableData() {
+        tableModel.setRowCount(0); // Clear existing data
+        for (Student student : sms.getAllStudents()) {
+            tableModel.addRow(new Object[]{student.getName(), student.getRollNumber(), student.getGrade(), student.getAddress()});
+        }
+    }
+
+    private void displayMessage(String message) {
+        JOptionPane.showMessageDialog(frame, message);
     }
 }
